@@ -36,8 +36,8 @@ year=str(year).replace("b",'').replace("'",'').replace("n",'').replace("\\",'')
 
 #remove the comment to debug
 #print(" ----- Debugging -----")
-#year="2021"
-#month="01"
+#year="2020"
+#month="02"
 
 curry=year
 currm=month
@@ -65,7 +65,6 @@ if month == "11":
   currm="09"
 if month == "12":
   currm="10"
-  curry=str(int(curry)-1)
 if month == "01":
   currm="11"
   curry=str(int(curry)-1)
@@ -75,7 +74,6 @@ if month == "01":
 #print("currm: " + currm)
 #print(type(curry))
 #print(type(currm))
-
 
 #input("Press Enter to continue...")
 
