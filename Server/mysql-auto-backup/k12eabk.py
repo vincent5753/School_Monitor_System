@@ -1,12 +1,8 @@
+#!/usr/bin/python3
 import MySQLdb
 import os
 import xlrd
 import subprocess
-
-f = open('/etc/mysql/debian.cnf', 'r')
-fr = f.read()
-mysql_user = fr.split(" = ")[2].split("\n")[0]
-mysql_passwd = fr.split(" = ")[3].split("\n")[0]
 
 #define DB connection
 db = MySQLdb.connect(host="localhost",user="root",passwd="kiss5891",charset="utf8")
@@ -16,6 +12,12 @@ cursor = db.cursor()
 cursor.execute("SELECT concat(\'school_\', school_Id), school_Name FROM information_schema.schemata, school_monitor_system.edge_list  where schema_name like \'school_______\' and schema_name = concat(\'school_\', school_Id);")
 #store results
 result = cursor.fetchall()
+
+print(str(result))
+
+#讀excel
+# school_list = xlrd.open_workbook("315校名單.xlsx")
+# school_sheet = school_list.sheets()[0]
 
 #close connection
 db.close()
@@ -31,6 +33,12 @@ month=str(month).replace("b",'').replace("'",'').replace("n",'').replace("\\",''
 year=str(year).replace("b",'').replace("'",'').replace("n",'').replace("\\",'')
 
 #backup data from 2 month ago
+
+#remove the comment to debug
+#print(" ----- Debugging -----")
+#year="2021"
+#month="01"
+
 curry=year
 currm=month
 
@@ -57,18 +65,26 @@ if month == "11":
   currm="09"
 if month == "12":
   currm="10"
+  curry=str(int(curry)-1)
 if month == "01":
   currm="11"
+  curry=str(int(curry)-1)
 
-print(currm)
-print(curry)
+##remove the comment to debug
+#print("curry: " + curry)
+#print("currm: " + currm)
+#print(type(curry))
+#print(type(currm))
+
+
+#input("Press Enter to continue...")
+
 
 #DB loop
 for x in result:
  print(x[0])
  code = str(x[0]).split("school_")[1].replace("f","F")
  print(code)
-
 #skip school for testing
  if code == "800001":
    continue
@@ -82,7 +98,12 @@ for x in result:
    continue
  if code == "900003":
    continue
- #get shcool name in chinese
+
+ print(str(x))
+ #find the shcool name using school number
+ #excel loop
+# for y in range(1, school_sheet.nrows):
+#    if str(school_sheet.row_values(y)[3]) == code:
  schoolchname = x[1]
 
 #if the folder does not exist
@@ -102,9 +123,8 @@ for x in result:
     cursor.execute("select count(*) from school_" + str(code) + ".speedtest" + " where time_logged BETWEEN " + "\'" + curry +  "-" + currm + "-01 00:00:00" +  "\'" +  "and" + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'")
     result = cursor.fetchall()
     if int(str(result).replace("(",'').replace(")",'').replace(",",'')) != 0:
-        os.system("sudo mysqldump -u" + mysql_user + " -p" + mysql_passwd + " school_"+ code + " speedtest --where=\"time_logged BETWEEN "+ "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  "and" + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + "\"" + ">" + "/home/ubuntu/k12ea/" + schoolchname + "/" + curry + "-" + currm + "/" + "school_" + code +".speedtest." + curry + "-" + currm + ".sql --skip-add-drop-table")
-        os.system("sudo sed -i 's/CREATE TABLE/CREATE TABLE IF NOT EXISTS/g' " + " /home/ubuntu/k12ea/" + schoolchname + "/" + curry + "-" + currm + "/" + "school_" + code +".speedtest." + curry + "-" + currm + ".sql")
-        os.system("sudo mysql -uroot  -e " + '\"' + "delete from school_"+ code + ".speedtest where time_logged BETWEEN " + "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  " and " + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + '\"')
+        os.system("sudo mysqldump -uroot  school_"+ code + " speedtest --where=\"time_logged BETWEEN "+ "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  "and" + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + "\"" + ">" + "/home/ubuntu/k12ea/" + schoolchname + "/" + curry + "-" + currm + "/" + "school_" + code +".speedtest." + curry + "-" + currm + ".sql")
+#        os.system("sudo mysql -uroot  -e " + '\"' + "delete from school_"+ code + ".speedtest where time_logged BETWEEN " + "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  " and " + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + '\"')
         print(schoolchname + ".speedtest." + curry + "-" + currm)
     else:
         print(schoolchname + ".speedtest " + curry + "-" + currm +  " 為空，跳過")
@@ -113,9 +133,8 @@ for x in result:
     cursor.execute("select count(*) from school_" + str(code) + ".ports" + " where time_logged BETWEEN " + "\'" + curry +  "-" + currm + "-01 00:00:00" +  "\'" +  "and" + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'")
     result = cursor.fetchall()
     if int(str(result).replace("(",'').replace(")",'').replace(",",'')) != 0:
-        os.system("sudo mysqldump -u" + mysql_user + " -p" + mysql_passwd + " school_"+ code + " ports --where=\"time_logged BETWEEN "+ "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  "and" + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + "\"" + ">" + "/home/ubuntu/k12ea/" + schoolchname + "/" + curry + "-" + currm + "/" + "school_" + code +".ports." + curry + "-" + currm + ".sql --skip-add-drop-table") 
-        os.system("sudo mysql -uroot  -e " + '\"' + "delete from school_"+ code + ".ports where time_logged BETWEEN " + "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  " and " + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + '\"')
-        os.system("sudo sed -i 's/CREATE TABLE/CREATE TABLE IF NOT EXISTS/g' " + " /home/ubuntu/k12ea/" + schoolchname + "/" + curry + "-" + currm + "/" + "school_" + code +".ports." + curry + "-" + currm + ".sql") 
+        os.system("sudo mysqldump -uroot  school_"+ code + " ports --where=\"time_logged BETWEEN "+ "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  "and" + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + "\"" + ">" + "/home/ubuntu/k12ea/" + schoolchname + "/" + curry + "-" + currm + "/" + "school_" + code +".ports." + curry + "-" + currm + ".sql") 
+#        os.system("sudo mysql -uroot  -e " + '\"' + "delete from school_"+ code + ".ports where time_logged BETWEEN " + "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  " and " + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + '\"')
         print(schoolchname + ".ports." + curry + "-" + currm)
     else:
         print(schoolchname + ".ports " + curry + "-" + currm +  " 為空，跳過")
@@ -128,9 +147,8 @@ for x in result:
     cursor.execute("select count(*) from school_" + str(code) + ".device_state_history" + " where time_logged BETWEEN " + "\'" + curry +  "-" + currm + "-01 00:00:00" +  "\'" +  "and " + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'")
     result = cursor.fetchall()
     if int(str(result).replace("(",'').replace(")",'').replace(",",'')) != 0:
-        os.system("sudo mysqldump -u" + mysql_user + " -p" + mysql_passwd + " school_"+ code + " device_state_history --where=\"time_logged BETWEEN "+ "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  "and" + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + "\"" + ">" + "/home/ubuntu/k12ea/" + schoolchname + "/" + curry + "-" + currm + "/" + "school_" + code +".device_state_history." + curry + "-" + currm + ".sql --skip-add-drop-table")
-        os.system("sudo mysql -uroot  -e " + '\"' + "delete from school_"+ code + ".device_state_history where time_logged BETWEEN " + "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  " and " + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + '\"')
-        os.system("sudo sed -i 's/CREATE TABLE/CREATE TABLE IF NOT EXISTS/g' " + " /home/ubuntu/k12ea/" + schoolchname + "/" + curry + "-" + currm + "/" + "school_" + code +".device_state_history." + curry + "-" + currm + ".sql")
+        os.system("sudo mysqldump -uroot  school_"+ code + " device_state_history --where=\"time_logged BETWEEN "+ "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  "and" + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + "\"" + ">" + "/home/ubuntu/k12ea/" + schoolchname + "/" + curry + "-" + currm + "/" + "school_" + code +".device_state_history." + curry + "-" + currm + ".sql")
+#        os.system("sudo mysql -uroot  -e " + '\"' + "delete from school_"+ code + ".device_state_history where time_logged BETWEEN " + "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  " and " + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + '\"')
         print(schoolchname + ".device_state_history." + curry + "-" + currm)
     else:
         print(schoolchname + ".device_state_history " + curry + "-" + currm +  " 為空，跳過")
@@ -139,9 +157,8 @@ for x in result:
     cursor.execute("select count(*) from school_" + str(code) + ".device_perf" + " where timestamp BETWEEN " + "\'" + curry +  "-" + currm + "-01 00:00:00" +  "\'" +  "and" + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'")
     result = cursor.fetchall()
     if int(str(result).replace("(",'').replace(")",'').replace(",",'')) != 0:
-        os.system("sudo mysqldump -u" + mysql_user + " -p" + mysql_passwd + " school_"+ code + " device_perf --where=\"timestamp BETWEEN "+ "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  "and" + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + "\"" + ">" + "/home/ubuntu/k12ea/" + schoolchname + "/" + curry + "-" + currm + "/" + "school_" + code +".device_perf." + curry + "-" + currm + ".sql --skip-add-drop-table")
-        os.system("sudo mysql -uroot  -e " + '\"' + "delete from school_"+ code + ".device_perf where \"timestamp BETWEEN " + "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  " and " + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + '\"')
-        os.system("sudo sed -i 's/CREATE TABLE/CREATE TABLE IF NOT EXISTS/g' " + " /home/ubuntu/k12ea/" + schoolchname + "/" + curry + "-" + currm + "/" + "school_" + code +".device_perf." + curry + "-" + currm + ".sql")
+        os.system("sudo mysqldump -uroot  school_"+ code + " device_perf --where=\"timestamp BETWEEN "+ "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  "and" + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + "\"" + ">" + "/home/ubuntu/k12ea/" + schoolchname + "/" + curry + "-" + currm + "/" + "school_" + code +".device_perf." + curry + "-" + currm + ".sql")
+#        os.system("sudo mysql -uroot  -e " + '\"' + "delete from school_"+ code + ".device_perf where \"timestamp BETWEEN " + "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  " and " + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + '\"')
         print(schoolchname + ".device_perf." + curry + "-" + currm)
     else:
         print(schoolchname + ".device_perf " + curry + "-" + currm +  " 為空，跳過")
@@ -150,9 +167,8 @@ for x in result:
     cursor.execute("select count(*) from school_" + str(code) + ".alert_log" + " where time_logged BETWEEN " + "\'" + curry +  "-" + currm + "-01 00:00:00" +  "\'" +  "and" + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'")
     result = cursor.fetchall()
     if int(str(result).replace("(",'').replace(")",'').replace(",",'')) != 0:
-        os.system("sudo mysqldump -u" + mysql_user + " -p" + mysql_passwd + " school_"+ code + " alert_log --where=\"time_logged BETWEEN "+ "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  "and" + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + "\"" + ">" + "/home/ubuntu/k12ea/" + schoolchname + "/" + curry + "-" + currm + "/" +  "school_" + code +".alert_log." + curry + "-" + currm + ".sql --skip-add-drop-table")
-        os.system("sudo mysql -uroot  -e " + '\"' + "delete from school_"+ code + ".alert_log where \"time_logged BETWEEN " + "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  " and " + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + '\"')
-        os.system("sudo sed -i 's/CREATE TABLE/CREATE TABLE IF NOT EXISTS/g' " + " /home/ubuntu/k12ea/" + schoolchname + "/" + curry + "-" + currm + "/" +  "school_" + code +".alert_log." + curry + "-" + currm + ".sql")
+        os.system("sudo mysqldump -uroot  school_"+ code + " alert_log --where=\"time_logged BETWEEN "+ "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  "and" + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + "\"" + ">" + "/home/ubuntu/k12ea/" + schoolchname + "/" + curry + "-" + currm + "/" +  "school_" + code +".alert_log." + curry + "-" + currm + ".sql")
+#        os.system("sudo mysql -uroot  -e " + '\"' + "delete from school_"+ code + ".alert_log where \"time_logged BETWEEN " + "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  " and " + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + '\"')
         print(schoolchname + ".alert_log." + curry + "-" + currm)
     else:
         print(schoolchname + ".alert_log " + curry + "-" + currm +  " 為空，跳過")
@@ -174,9 +190,8 @@ for x in result:
     cursor.execute("select count(*) from school_" + str(code) + ".speedtest" + " where time_logged BETWEEN " + "\'" + curry +  "-" + currm + "-01 00:00:00" +  "\'" +  "and" + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'")
     result = cursor.fetchall()
     if int(str(result).replace("(",'').replace(")",'').replace(",",'')) != 0:
-        os.system("sudo mysqldump -u" + mysql_user + " -p" + mysql_passwd + " school_"+ code + " speedtest --where=\"time_logged BETWEEN "+ "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  "and" + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + "\"" + ">" + "/home/ubuntu/k12ea/" + schoolchname + "/" + curry + "-" + currm + "/" + "school_" + code +".speedtest." + curry + "-" + currm + ".sql --skip-add-drop-table")
-        os.system("sudo mysql -uroot  -e " + '\"' + "delete from school_"+ code + ".speedtest where time_logged BETWEEN " + "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  " and " + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + '\"')
-        os.system("sudo sed -i 's/CREATE TABLE/CREATE TABLE IF NOT EXISTS/g' " + " /home/ubuntu/k12ea/" + schoolchname + "/" + curry + "-" + currm + "/" + "school_" + code +".speedtest." + curry + "-" + currm + ".sql")
+        os.system("sudo mysqldump -uroot  school_"+ code + " speedtest --where=\"time_logged BETWEEN "+ "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  "and" + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + "\"" + ">" + "/home/ubuntu/k12ea/" + schoolchname + "/" + curry + "-" + currm + "/" + "school_" + code +".speedtest." + curry + "-" + currm + ".sql")
+#        os.system("sudo mysql -uroot  -e " + '\"' + "delete from school_"+ code + ".speedtest where time_logged BETWEEN " + "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  " and " + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + '\"')
         print(schoolchname + ".speedtest." + curry + "-" + currm)
     else:
         print(schoolchname + ".speedtest " + curry + "-" + currm +  " 為空，跳過")
@@ -185,9 +200,8 @@ for x in result:
     cursor.execute("select count(*) from school_" + str(code) + ".ports" + " where time_logged BETWEEN " + "\'" + curry +  "-" + currm + "-01 00:00:00" +  "\'" +  "and" + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'")
     result = cursor.fetchall()
     if int(str(result).replace("(",'').replace(")",'').replace(",",'')) != 0:
-        os.system("sudo mysqldump -u" + mysql_user + " -p" + mysql_passwd + " school_"+ code + " ports --where=\"time_logged BETWEEN "+ "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  "and" + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + "\"" + ">" + "/home/ubuntu/k12ea/" + schoolchname + "/" + curry + "-" + currm + "/" + "school_" + code +".ports." + curry + "-" + currm + ".sql --skip-add-drop-table")
-        os.system("sudo mysql -uroot  -e " + '\"' + "delete from school_"+ code + ".ports where time_logged BETWEEN " + "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  " and " + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + '\"')
-        os.system("sudo sed -i 's/CREATE TABLE/CREATE TABLE IF NOT EXISTS/g' " + " /home/ubuntu/k12ea/" + schoolchname + "/" + curry + "-" + currm + "/" + "school_" + code +".ports." + curry + "-" + currm + ".sql")
+        os.system("sudo mysqldump -uroot  school_"+ code + " ports --where=\"time_logged BETWEEN "+ "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  "and" + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + "\"" + ">" + "/home/ubuntu/k12ea/" + schoolchname + "/" + curry + "-" + currm + "/" + "school_" + code +".ports." + curry + "-" + currm + ".sql")
+#        os.system("sudo mysql -uroot  -e " + '\"' + "delete from school_"+ code + ".ports where time_logged BETWEEN " + "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  " and " + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + '\"')
         print(schoolchname + ".ports." + curry + "-" + currm)
     else:
         print(schoolchname + ".ports " + curry + "-" + currm +  " 為空，跳過")
@@ -200,8 +214,8 @@ for x in result:
     cursor.execute("select count(*) from school_" + str(code) + ".device_state_history" + " where time_logged BETWEEN " + "\'" + curry +  "-" + currm + "-01 00:00:00" +  "\'" +  "and" + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'")
     result = cursor.fetchall()
     if int(str(result).replace("(",'').replace(")",'').replace(",",'')) != 0:
-        os.system("sudo mysqldump -u" + mysql_user + " -p" + mysql_passwd + " school_"+ code + " device_state_history --where=\"time_logged BETWEEN "+ "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  "and" + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + "\"" + ">" + "/home/ubuntu/k12ea/" + schoolchname + "/" + curry + "-" + currm + "/" + "school_" + code +".device_state_history." + curry + "-" + currm + ".sql --skip-add-drop-table")
-        os.system("sudo mysql -uroot  -e " + '\"' + "delete from school_"+ code + ".device_state_history where time_logged BETWEEN " + "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  " and " + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + '\"')
+        os.system("sudo mysqldump -uroot  school_"+ code + " device_state_history --where=\"time_logged BETWEEN "+ "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  "and" + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + "\"" + ">" + "/home/ubuntu/k12ea/" + schoolchname + "/" + curry + "-" + currm + "/" + "school_" + code +".device_state_history." + curry + "-" + currm + ".sql")
+#        os.system("sudo mysql -uroot  -e " + '\"' + "delete from school_"+ code + ".device_state_history where time_logged BETWEEN " + "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  " and " + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + '\"')
         print(schoolchname + ".device_state_history." + curry + "-" + currm)
     else:
         print(schoolchname + ".device_state_history " + curry + "-" + currm +  " 為空，跳過")
@@ -210,9 +224,8 @@ for x in result:
     cursor.execute("select count(*) from school_" + str(code) + ".device_perf" + " where timestamp BETWEEN " + "\'" + curry +  "-" + currm + "-01 00:00:00" +  "\'" +  "and" + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'")
     result = cursor.fetchall()
     if int(str(result).replace("(",'').replace(")",'').replace(",",'')) != 0:
-        os.system("sudo mysqldump -u" + mysql_user + " -p" + mysql_passwd + " school_"+ code + " device_perf --where=\"timestamp BETWEEN "+ "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  "and" + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + "\"" + ">" + "/home/ubuntu/k12ea/" + schoolchname + "/" + curry + "-" + currm + "/" + "school_" + code +".device_perf." + curry + "-" + currm + ".sql --skip-add-drop-table")
-        os.system("sudo mysql -uroot  -e " + '\"' + "delete from school_"+ code + ".device_perf where timestamp BETWEEN " + "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  " and " + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + '\"')
-        os.system("sudo sed -i 's/CREATE TABLE/CREATE TABLE IF NOT EXISTS/g' " + " /home/ubuntu/k12ea/" + schoolchname + "/" + curry + "-" + currm + "/" + "school_" + code +".device_perf." + curry + "-" + currm + ".sql")
+        os.system("sudo mysqldump -uroot  school_"+ code + " device_perf --where=\"timestamp BETWEEN "+ "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  "and" + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + "\"" + ">" + "/home/ubuntu/k12ea/" + schoolchname + "/" + curry + "-" + currm + "/" + "school_" + code +".device_perf." + curry + "-" + currm + ".sql")
+#        os.system("sudo mysql -uroot  -e " + '\"' + "delete from school_"+ code + ".device_perf where timestamp BETWEEN " + "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  " and " + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + '\"')
         print(schoolchname + ".device_perf." + curry + "-" + currm)
     else:
         print(schoolchname + ".device_perf " + curry + "-" + currm +  " 為空，跳過")
@@ -221,9 +234,8 @@ for x in result:
     cursor.execute("select count(*) from school_" + str(code) + ".alert_log" + " where time_logged BETWEEN " + "\'" + curry +  "-" + currm + "-01 00:00:00" +  "\'" +  "and" + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'")
     result = cursor.fetchall()
     if int(str(result).replace("(",'').replace(")",'').replace(",",'')) != 0:
-        os.system("sudo mysqldump -u" + mysql_user + " -p" + mysql_passwd + " school_"+ code + " alert_log --where=\"time_logged BETWEEN "+ "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  "and" + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + "\"" + ">" + "/home/ubuntu/k12ea/" + schoolchname + "/" + curry + "-" + currm + "/" + "school_" + code +".alert_log." + curry + "-" + currm + ".sql --skip-add-drop-table")
-        os.system("sudo mysql -uroot  -e " + '\"' + "delete from school_"+ code + ".alert_log where time_logged BETWEEN " + "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  " and " + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + '\"')
-        os.system("sudo sed -i 's/CREATE TABLE/CREATE TABLE IF NOT EXISTS/g' " + " /home/ubuntu/k12ea/" + schoolchname + "/" + curry + "-" + currm + "/" +  "school_" + code +".alert_log." + curry + "-" + currm + ".sql")
+        os.system("sudo mysqldump -uroot  school_"+ code + " alert_log --where=\"time_logged BETWEEN "+ "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  "and" + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + "\"" + ">" + "/home/ubuntu/k12ea/" + schoolchname + "/" + curry + "-" + currm + "/" + "school_" + code +".alert_log." + curry + "-" + currm + ".sql")
+#        os.system("sudo mysql -uroot  -e " + '\"' + "delete from school_"+ code + ".alert_log where time_logged BETWEEN " + "\'" + curry + "-" + currm + "-01 00:00:00" +  "\'" +  " and " + "\'" + curry  + "-" + currm + "-31 23:59:59" + "\'" + '\"')
         print(schoolchname + ".alert_log." + curry + "-" + currm)
     else:
         print(schoolchname + ".alert_log " + curry + "-" + currm +  " 為空，跳過")
